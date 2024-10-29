@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <style>
+        :root {
+            --primary-color: #28a745;
+            --primary-hover: #218838;
+            --error-color: #dc3545;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        #download-form {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #progress-bar {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .progress-info {
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Downloader</h1>
+        <form id="download-form">
+            <div class="form-group">
+                <label for="url">YouTube URL</label>
+                <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+            </div>
+
+            <div class="form-group">
+                <label for="download_type">Download Type</label>
+                <select name="download_type" id="download_type" required>
+                    <option value="video">Video</option>
+                    <option value="audio">Audio (MP3)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="quality-group">
+                <label for="quality">Quality</label>
+                <select name="quality" id="quality">
+                    <option value="best">Best</option>
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                    <option value="480p">480p</option>
+                </select>
+            </div>
+
+            <button type="submit" id="download-button">
+                <span id="button-text">Download</span>
+                <span class="loading-spinner" style="display: none;"></span>
+            </button>
+        </form>
+
+        <div id="progress-bar">
+            <div class="progress-info">
+                <p>Download Progress: <span id="progress-percentage">0%</span></p>
+                <p>Speed: <span id="download-speed">--</span></p>
+                <p>ETA: <span id="download-eta">--</span></p>
+            </div>
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+    </div>
+
+    <script>
+        document.getElementById('download-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const form = e.target;
+            const button = document.getElementById('download-button');
+            const buttonText = document.getElementById('button-text');
+            const spinner = document.querySelector('.loading-spinner');
+            const progressBar = document.getElementById('progress-bar');
+            const errorMessage = document.getElementById('error-message');
+
+            // Reset UI
+            errorMessage.style.display = 'none';
+            progressBar.style.display = 'block';
+            button.disabled = true;
+            buttonText.textContent = 'Downloading...';
+            spinner.style.display = 'inline-block';
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Download failed');
+                }
+
+                // Get the filename from the Content-Disposition header
+                const contentDisposition = response.headers.get('Content-Disposition');
+                const filename = contentDisposition
+                    ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                    : 'download';
+
+                // Create a download link
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                // Reset UI
+                button.disabled = false;
+                buttonText.textContent = 'Download';
+                spinner.style.display = 'none';
+                progressBar.style.display = 'none';
+            }
+        });
+
+        // Hide quality selection for audio downloads
+        document.getElementById('download_type').addEventListener('change', (e) => {
+            const qualityGroup = document.getElementById('quality-group');
+            qualityGroup.style.display = e.target.value === 'audio' ? 'none' : 'block';
+        });
+    </script>
+</body>
+</html>

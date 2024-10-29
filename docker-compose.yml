@@ -1,0 +1,13 @@
+version: '3.8'  # Use a version compatible with your Docker setup
+
+services:
+  yt-dlp-app:
+    build:
+      context: .  # Use the current directory as the build context
+      dockerfile: Dockerfile  # Specify the Dockerfile
+    ports:
+      - "8080:8080"  # Map port 8080 on the host to port 8080 in the container
+    volumes:
+      - ./downloads:/app/downloads  # Persist downloaded files on the host
+    environment:
+      - PYTHONUNBUFFERED=1  # Ensures that output from Python is sent straight to the terminal
