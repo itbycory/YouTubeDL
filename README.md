@@ -41,7 +41,7 @@ cd YouTubeDL
 
 2. Build and run the Docker container:
 ```bash
-docker-compose up --build
+docker compose up -d
 ```
 
 The application will be available at `http://localhost:8080`
