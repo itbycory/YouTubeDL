@@ -4,188 +4,146 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader</title>
-    <style>
-        :root {
-            --primary-color: #28a745;
-            --primary-hover: #218838;
-            --error-color: #dc3545;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#7C3AED',
+                    }
+                }
+            }
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f8f9fa;
-            color: #333;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        #download-form {
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        input[type="text"], select {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            box-sizing: border-box;
-            transition: border-color 0.3s;
-        }
-
-        input[type="text"]:focus, select:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary-color);
-            border: none;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-
-        #progress-bar {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 6px;
-        }
-
-        .progress-info {
-            margin-bottom: 10px;
-        }
-
-        .error-message {
-            color: var(--error-color);
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    </script>
 </head>
-<body>
-    <div class="container">
-        <h1>YouTube Downloader</h1>
-        <form id="download-form">
-            <div class="form-group">
-                <label for="url">YouTube URL</label>
-                <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center transition-all duration-500">
+    <div class="container mx-auto px-4 py-8 max-w-md">
+        <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 transition-all duration-500">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white">YouTube Downloader</h1>
+                <button id="darkModeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white transition-all duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                    </svg>
+                </button>
+            </div>
+            <form id="downloadForm">
+                <div class="mb-4">
+                    <label for="url" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">YouTube URL</label>
+                    <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required
+                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+
+                <div class="mb-4">
+                    <label for="download_type" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Download Type</label>
+                    <select name="download_type" id="download_type" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="video">Video</option>
+                        <option value="audio">Audio</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="format" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Format</label>
+                    <select name="format" id="format" required
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="">Select a format</option>
+                    </select>
+                </div>
+
+                <button type="submit" id="downloadButton"
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out transform hover:scale-105">
+                    Download
+                </button>
+            </form>
+
+            <div id="loadingSpinner" class="hidden mt-4 text-center">
+                <svg class="animate-spin h-5 w-5 mx-auto text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading formats...</p>
             </div>
 
-            <div class="form-group">
-                <label for="download_type">Download Type</label>
-                <select name="download_type" id="download_type" required>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio (MP3)</option>
-                </select>
+            <div id="progressBar" class="mt-6 hidden">
+                <div class="mb-2">
+                    <div class="text-gray-700 dark:text-gray-300 text-sm font-bold mb-1">Download Progress</div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                        <div id="progressBarFill" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                    <span>Speed: <span id="downloadSpeed">--</span></span>
+                    <span>ETA: <span id="downloadEta">--</span></span>
+                </div>
             </div>
 
-            <div class="form-group" id="quality-group">
-                <label for="quality">Quality</label>
-                <select name="quality" id="quality">
-                    <option value="best">Best</option>
-                    <option value="1080p">1080p</option>
-                    <option value="720p">720p</option>
-                    <option value="480p">480p</option>
-                </select>
-            </div>
-
-            <button type="submit" id="download-button">
-                <span id="button-text">Download</span>
-                <span class="loading-spinner" style="display: none;"></span>
-            </button>
-        </form>
-
-        <div id="progress-bar">
-            <div class="progress-info">
-                <p>Download Progress: <span id="progress-percentage">0%</span></p>
-                <p>Speed: <span id="download-speed">--</span></p>
-                <p>ETA: <span id="download-eta">--</span></p>
+            <div id="errorMessage" class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden" role="alert">
+                <span class="block sm:inline"></span>
             </div>
         </div>
-
-        <div class="error-message" id="error-message"></div>
     </div>
 
     <script>
-        document.getElementById('download-form').addEventListener('submit', async (e) => {
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const downloadForm = document.getElementById('downloadForm');
+        const downloadType = document.getElementById('download_type');
+        const formatSelect = document.getElementById('format');
+        const downloadButton = document.getElementById('downloadButton');
+        const progressBar = document.getElementById('progressBar');
+        const progressBarFill = document.getElementById('progressBarFill');
+        const downloadSpeed = document.getElementById('downloadSpeed');
+        const downloadEta = document.getElementById('downloadEta');
+        const errorMessage = document.getElementById('errorMessage');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        // Dark mode toggle
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+        });
+
+        // Set initial dark mode
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Define available formats
+        const AVAILABLE_FORMATS = {
+            video: ['mp4', 'webm', 'mkv'],
+            audio: ['mp3', 'm4a', 'wav', 'aac']
+        };
+
+        // Update format options when download type changes
+        downloadType.addEventListener('change', () => {
+            const selectedType = downloadType.value;
+            formatSelect.innerHTML = '<option value="">Select a format</option>';
+
+            AVAILABLE_FORMATS[selectedType].forEach(format => {
+                const option = document.createElement('option');
+                option.value = format;
+                option.textContent = format.toUpperCase();
+                formatSelect.appendChild(option);
+            });
+        });
+
+        // Initial format population
+        downloadType.dispatchEvent(new Event('change'));
+
+        // Form submission
+        downloadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            downloadButton.disabled = true;
+            downloadButton.innerHTML = '<span class="flex items-center justify-center"><svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Downloading...</span>';
+            progressBar.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
 
-            const form = e.target;
-            const button = document.getElementById('download-button');
-            const buttonText = document.getElementById('button-text');
-            const spinner = document.querySelector('.loading-spinner');
-            const progressBar = document.getElementById('progress-bar');
-            const errorMessage = document.getElementById('error-message');
-
-            // Reset UI
-            errorMessage.style.display = 'none';
-            progressBar.style.display = 'block';
-            button.disabled = true;
-            buttonText.textContent = 'Downloading...';
-            spinner.style.display = 'inline-block';
+            const formData = new FormData(downloadForm);
 
             try {
-                const formData = new FormData(form);
                 const response = await fetch('/download', {
                     method: 'POST',
                     body: formData
@@ -196,13 +154,11 @@
                     throw new Error(error.error || 'Download failed');
                 }
 
-                // Get the filename from the Content-Disposition header
                 const contentDisposition = response.headers.get('Content-Disposition');
                 const filename = contentDisposition
                     ? contentDisposition.split('filename=')[1].replace(/"/g, '')
                     : 'download';
 
-                // Create a download link
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -212,24 +168,24 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
-
             } catch (error) {
                 errorMessage.textContent = error.message;
-                errorMessage.style.display = 'block';
+                errorMessage.classList.remove('hidden');
             } finally {
-                // Reset UI
-                button.disabled = false;
-                buttonText.textContent = 'Download';
-                spinner.style.display = 'none';
-                progressBar.style.display = 'none';
+                downloadButton.disabled = false;
+                downloadButton.textContent = 'Download';
+                progressBar.classList.add('hidden');
             }
         });
 
-        // Hide quality selection for audio downloads
-        document.getElementById('download_type').addEventListener('change', (e) => {
-            const qualityGroup = document.getElementById('quality-group');
-            qualityGroup.style.display = e.target.value === 'audio' ? 'none' : 'block';
-        });
+        // Progress updates
+        const eventSource = new EventSource('/progress');
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            progressBarFill.style.width = data.percent;
+            downloadSpeed.textContent = data.speed;
+            downloadEta.textContent = data.eta;
+        };
     </script>
 </body>
 </html>

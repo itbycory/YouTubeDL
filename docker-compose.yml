@@ -1,13 +1,20 @@
-version: '3.8'  # Use a version compatible with your Docker setup
+version: '3.8'
 
 services:
   yt-dlp-app:
     build:
-      context: .  # Use the current directory as the build context
-      dockerfile: Dockerfile  # Specify the Dockerfile
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"  # Map port 8080 on the host to port 8080 in the container
+      - "8080:8080"  # Flask app
+      - "8081:8081"  # WebSocket server
     volumes:
-      - ./downloads:/app/downloads  # Persist downloaded files on the host
+      - ./downloads:/app/downloads
     environment:
-      - PYTHONUNBUFFERED=1  # Ensures that output from Python is sent straight to the terminal
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

@@ -1,9 +1,10 @@
-from flask import Flask, request, send_file, jsonify, render_template
-import subprocess
+from flask import Flask, request, send_file, jsonify, render_template, Response
+import yt_dlp
 import os
-import time
 import logging
 from pathlib import Path
+import json
+import time
 
 app = Flask(__name__)
 
@@ -19,67 +20,83 @@ DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 def index():
     return render_template('index.html')
 
+def generate_progress(d):
+    if d['status'] == 'downloading':
+        percent = d['_percent_str']
+        speed = d['_speed_str']
+        eta = d['_eta_str']
+        progress_data = {
+            'percent': percent,
+            'speed': speed,
+            'eta': eta
+        }
+        yield f"data: {json.dumps(progress_data)}\n\n"
+
 @app.route('/download', methods=['POST'])
 def download():
     url = request.form['url']
     download_type = request.form['download_type']
-    quality = request.form['quality']
+    requested_format = request.form['format']
 
-    output_file = os.path.join(DOWNLOADS_DIR, '%(title)s.%(ext)s')
+    # Generate a unique identifier for this download
+    unique_id = int(time.time() * 1000)
+    output_file = DOWNLOADS_DIR / f'%(title)s_{unique_id}.%(ext)s'
+
+    ydl_opts = {
+        'outtmpl': str(output_file),
+        'progress_hooks': [generate_progress],
+    }
+
+    if download_type == 'video':
+        # For videos, always get the best quality
+        ydl_opts.update({
+            'format': 'bestvideo[ext=' + requested_format + ']+bestaudio/best[ext=' + requested_format + ']',
+            'merge_output_format': requested_format,
+        })
+    else:  # audio
+        ydl_opts.update({
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': requested_format,
+                'preferredquality': '192',
+            }],
+        })
 
     try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+
+        filename = ydl.prepare_filename(info)
+        file_path = Path(filename)
+
+        # Handle audio file extension
         if download_type == 'audio':
-            logger.info(f"Starting audio download for URL: {url}")
-            command = [
-                'yt-dlp',
-                '--format', 'bestaudio/best',
-                '--extract-audio',
-                '--audio-format', 'mp3',
-                '--output', output_file,
-                url
-            ]
-        else:  # Video download
-            logger.info(f"Starting video download for URL: {url} with quality {quality}")
-            command = [
-                'yt-dlp',
-                '--format', quality,  # User-selected quality
-                '--output', output_file,
-                url
-            ]
+            file_path = file_path.with_suffix(f'.{requested_format}')
 
-        # Run the yt-dlp command and capture the output
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        response = send_file(
+            file_path,
+            as_attachment=True,
+            download_name=file_path.stem.rsplit('_', 1)[0] + file_path.suffix,
+            mimetype='audio/mpeg' if download_type == 'audio' else f'video/{requested_format}'
+        )
 
-        # Monitor the download progress
-        for line in iter(process.stdout.readline, b''):
-            logger.info(line.decode().strip())  # Print to console or handle progress
+        # Remove the file after sending
+        file_path.unlink(missing_ok=True)
 
-        process.stdout.close()
-        process.wait()
-
-        # Check if the download was successful
-        if process.returncode == 0:
-            logger.info("Download completed successfully.")
-            # Find the downloaded file
-            downloaded_file = next(DOWNLOADS_DIR.glob('*.mp3'), None) if download_type == 'audio' else next(DOWNLOADS_DIR.glob('*.mp4'), None)
-            if downloaded_file:
-                logger.info(f"File available for download: {downloaded_file}")
-                return send_file(
-                    downloaded_file,
-                    as_attachment=True,
-                    download_name=os.path.basename(downloaded_file),
-                    last_modified=os.path.getmtime(downloaded_file)
-                )
-            else:
-                logger.error("Downloaded file not found after process completion.")
-                return jsonify({"error": "Downloaded file not found."}), 404
-        else:
-            logger.error(f"Download failed with return code: {process.returncode}")
-            return jsonify({"error": "Download failed."}), 500
+        return response
 
     except Exception as e:
         logger.error(f"Error during download: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/progress')
+def progress():
+    def generate():
+        for progress in generate_progress({'status': 'downloading', '_percent_str': '0%', '_speed_str': '0 KiB/s', '_eta_str': 'Unknown'}):
+            yield progress
+
+    return Response(generate(), mimetype='text/event-stream')
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080, debug=True)

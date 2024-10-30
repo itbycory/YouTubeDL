@@ -10,13 +10,18 @@ WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
+
+# Install Python packages
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY . .
 
-# Expose port
-EXPOSE 8080
+# Create downloads directory
+RUN mkdir -p downloads && chmod 777 downloads
+
+# Expose ports for Flask and WebSocket
+EXPOSE 8080 8081
 
 # Command to run the application
 CMD ["python", "app.py"]

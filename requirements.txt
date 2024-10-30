@@ -1,2 +1,4 @@
-Flask
-yt-dlp
+Flask>=2.0.1
+yt-dlp>=2023.3.4
+websockets>=10.4
+Werkzeug>=2.0.1
