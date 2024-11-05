@@ -20,7 +20,7 @@
     </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center transition-all duration-500">
-    <div class="container mx-auto px-4 py-8 max-w-md">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
         <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 transition-all duration-500">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-3xl font-bold text-gray-800 dark:text-white">YouTube Downloader</h1>
@@ -30,6 +30,37 @@
                     </svg>
                 </button>
             </div>
+
+            <!-- Video Preview Section (Initially Hidden) -->
+            <div id="videoPreview" class="hidden mb-6">
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                    <img id="thumbnailImg" class="w-full rounded-lg mb-4" src="" alt="Video thumbnail">
+                    <h2 id="videoTitle" class="text-lg font-semibold text-gray-800 dark:text-white mb-2"></h2>
+                    <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-300">
+                        <div>
+                            <span class="font-medium">Channel:</span>
+                            <span id="channelName"></span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Duration:</span>
+                            <span id="videoDuration"></span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Views:</span>
+                            <span id="viewCount"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Indicator for Video Info -->
+            <div id="loadingVideoInfo" class="hidden mb-4">
+                <div class="flex items-center justify-center space-x-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Loading video info...</span>
+                </div>
+            </div>
+
             <form id="downloadForm">
                 <div class="mb-4">
                     <label for="url" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">YouTube URL</label>
@@ -90,6 +121,7 @@
     <script>
         const darkModeToggle = document.getElementById('darkModeToggle');
         const downloadForm = document.getElementById('downloadForm');
+        const urlInput = document.getElementById('url');
         const downloadType = document.getElementById('download_type');
         const formatSelect = document.getElementById('format');
         const downloadButton = document.getElementById('downloadButton');
@@ -99,6 +131,8 @@
         const downloadEta = document.getElementById('downloadEta');
         const errorMessage = document.getElementById('errorMessage');
         const loadingSpinner = document.getElementById('loadingSpinner');
+        const loadingVideoInfo = document.getElementById('loadingVideoInfo');
+        const videoPreview = document.getElementById('videoPreview');
 
         // Dark mode toggle
         darkModeToggle.addEventListener('click', () => {
@@ -109,6 +143,83 @@
         // Set initial dark mode
         if (localStorage.getItem('darkMode') === 'true') {
             document.documentElement.classList.add('dark');
+        }
+
+        // Function to format duration
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+            }
+            return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        // Function to format view count
+        function formatViewCount(count) {
+            return new Intl.NumberFormat().format(count);
+        }
+
+        // URL input handler
+        let urlTimeout;
+        urlInput.addEventListener('input', (e) => {
+            clearTimeout(urlTimeout);
+            const url = e.target.value.trim();
+            
+            if (url && isValidYouTubeUrl(url)) {
+                urlTimeout = setTimeout(() => fetchVideoInfo(url), 500);
+            } else {
+                videoPreview.classList.add('hidden');
+            }
+        });
+
+        // Function to check if URL is valid YouTube URL
+        function isValidYouTubeUrl(url) {
+            const pattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+            return pattern.test(url);
+        }
+
+        // Function to fetch video info
+        async function fetchVideoInfo(url) {
+            loadingVideoInfo.classList.remove('hidden');
+            videoPreview.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+
+            try {
+                const response = await fetch('/video-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch video info');
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Update the video preview
+                document.getElementById('thumbnailImg').src = data.thumbnail;
+                document.getElementById('videoTitle').textContent = data.title;
+                document.getElementById('channelName').textContent = data.channel;
+                document.getElementById('videoDuration').textContent = formatDuration(data.duration);
+                document.getElementById('viewCount').textContent = formatViewCount(data.view_count);
+                
+                videoPreview.classList.remove('hidden');
+            } catch (error) {
+                errorMessage.querySelector('span').textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loadingVideoInfo.classList.add('hidden');
+            }
         }
 
         // Define available formats
@@ -169,7 +280,7 @@
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             } catch (error) {
-                errorMessage.textContent = error.message;
+                errorMessage.querySelector('span').textContent = error.message;
                 errorMessage.classList.remove('hidden');
             } finally {
                 downloadButton.disabled = false;
