@@ -6,15 +6,22 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"  # Flask app
-      - "8081:8081"  # WebSocket server
+      - "8080:8080"
     volumes:
       - ./downloads:/app/downloads
     environment:
       - PYTHONUNBUFFERED=1
+      - FLASK_ENV=production
+      - MAX_CONTENT_LENGTH=1073741824  # 1GB max file size
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
