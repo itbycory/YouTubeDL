@@ -7,7 +7,6 @@ import json
 import time
 
 app = Flask(__name__)
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,6 +18,48 @@ DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/video-info', methods=['POST'])
+def get_video_info():
+    try:
+        data = request.get_json()
+        url = data.get('url')
+
+        if not url:
+            return jsonify({'error': 'URL is required'}), 400
+
+        ydl_opts = {
+            'format': 'best',
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': True,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        video_info = {
+            'title': info.get('title'),
+            'thumbnail': info.get('thumbnail'),
+            'duration': info.get('duration'),
+            'channel': info.get('uploader'),
+            'view_count': info.get('view_count'),
+            'formats': [
+                {
+                    'format_id': f.get('format_id'),
+                    'ext': f.get('ext'),
+                    'resolution': f.get('resolution'),
+                    'filesize': f.get('filesize'),
+                    'vcodec': f.get('vcodec'),
+                    'acodec': f.get('acodec'),
+                } for f in info.get('formats', []) if f.get('ext') in ['mp4', 'webm', 'mp3', 'm4a']
+            ]
+        }
+
+        return jsonify(video_info)
+    except Exception as e:
+        logger.error(f"Error fetching video info: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 def generate_progress(d):
     if d['status'] == 'downloading':
@@ -48,7 +89,6 @@ def download():
     }
 
     if download_type == 'video':
-        # For videos, always get the best quality
         ydl_opts.update({
             'format': 'bestvideo[ext=' + requested_format + ']+bestaudio/best[ext=' + requested_format + ']',
             'merge_output_format': requested_format,
@@ -66,7 +106,6 @@ def download():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-
         filename = ydl.prepare_filename(info)
         file_path = Path(filename)
 
@@ -83,9 +122,7 @@ def download():
 
         # Remove the file after sending
         file_path.unlink(missing_ok=True)
-
         return response
-
     except Exception as e:
         logger.error(f"Error during download: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -95,7 +132,6 @@ def progress():
     def generate():
         for progress in generate_progress({'status': 'downloading', '_percent_str': '0%', '_speed_str': '0 KiB/s', '_eta_str': 'Unknown'}):
             yield progress
-
     return Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
