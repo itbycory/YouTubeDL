@@ -24,7 +24,7 @@ def get_video_info():
     try:
         data = request.get_json()
         url = data.get('url')
-
+        
         if not url:
             return jsonify({'error': 'URL is required'}), 400
 
@@ -37,7 +37,7 @@ def get_video_info():
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-
+            
         video_info = {
             'title': info.get('title'),
             'thumbnail': info.get('thumbnail'),
@@ -55,7 +55,7 @@ def get_video_info():
                 } for f in info.get('formats', []) if f.get('ext') in ['mp4', 'webm', 'mp3', 'm4a']
             ]
         }
-
+        
         return jsonify(video_info)
     except Exception as e:
         logger.error(f"Error fetching video info: {str(e)}")
@@ -78,11 +78,11 @@ def download():
     url = request.form['url']
     download_type = request.form['download_type']
     requested_format = request.form['format']
-
+    
     # Generate a unique identifier for this download
     unique_id = int(time.time() * 1000)
     output_file = DOWNLOADS_DIR / f'%(title)s_{unique_id}.%(ext)s'
-
+    
     ydl_opts = {
         'outtmpl': str(output_file),
         'progress_hooks': [generate_progress],
@@ -108,18 +108,18 @@ def download():
             info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
         file_path = Path(filename)
-
+        
         # Handle audio file extension
         if download_type == 'audio':
             file_path = file_path.with_suffix(f'.{requested_format}')
-
+            
         response = send_file(
             file_path,
             as_attachment=True,
             download_name=file_path.stem.rsplit('_', 1)[0] + file_path.suffix,
             mimetype='audio/mpeg' if download_type == 'audio' else f'video/{requested_format}'
         )
-
+        
         # Remove the file after sending
         file_path.unlink(missing_ok=True)
         return response
