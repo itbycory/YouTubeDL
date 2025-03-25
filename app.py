@@ -32,15 +32,41 @@ def get_video_info():
             'format': 'best',
             'quiet': True,
             'no_warnings': True,
-            'extract_flat': True,
+            'writesubtitles': False,
+            'extract_flat': False,
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
+        # More robust thumbnail retrieval
+        def extract_best_thumbnail(info):
+            # Check different possible thumbnail locations
+            thumbnail_candidates = [
+                info.get('thumbnail'),  # Primary thumbnail
+                info.get('thumbnails', [{}])[0].get('url'),  # First in thumbnails list
+                info.get('thumbnails', [{}])[0].get('uri'),  # Alternative key
+            ]
+            
+            # Return the first non-None, non-empty candidate
+            for candidate in thumbnail_candidates:
+                if candidate and isinstance(candidate, str):
+                    return candidate
+            
+            # Attempt to construct YouTube thumbnail URL as a fallback
+            try:
+                video_id = info.get('id')
+                if video_id:
+                    # YouTube typically has standardized thumbnail URLs
+                    return f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"
+            except Exception:
+                pass
+            
+            return None
+
         video_info = {
             'title': info.get('title'),
-            'thumbnail': info.get('thumbnail'),
+            'thumbnail': extract_best_thumbnail(info),
             'duration': info.get('duration'),
             'channel': info.get('uploader'),
             'view_count': info.get('view_count'),
