@@ -15,6 +15,37 @@ logger = logging.getLogger(__name__)
 DOWNLOADS_DIR = Path("/app/downloads")
 DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+def get_ydl_opts(base_opts=None):
+    """
+    Returns yt-dlp options with anti-detection measures
+    """
+    opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        },
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['webpage', 'configs'],
+            }
+        },
+        'socket_timeout': 30,
+        'retries': 10,
+        'fragment_retries': 10,
+        'file_access_retries': 3,
+        'cookiesfrombrowser': None,  # Can be set to ('chrome',) or ('firefox',) if needed
+    }
+    
+    if base_opts:
+        opts.update(base_opts)
+    
+    return opts
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -28,13 +59,11 @@ def get_video_info():
         if not url:
             return jsonify({'error': 'URL is required'}), 400
 
-        ydl_opts = {
+        ydl_opts = get_ydl_opts({
             'format': 'best',
-            'quiet': True,
-            'no_warnings': True,
             'writesubtitles': False,
             'extract_flat': False,
-        }
+        })
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -44,8 +73,7 @@ def get_video_info():
             # Check different possible thumbnail locations
             thumbnail_candidates = [
                 info.get('thumbnail'),  # Primary thumbnail
-                info.get('thumbnails', [{}])[0].get('url'),  # First in thumbnails list
-                info.get('thumbnails', [{}])[0].get('uri'),  # Alternative key
+                info.get('thumbnails', [{}])[0].get('url') if info.get('thumbnails') else None,
             ]
             
             # Return the first non-None, non-empty candidate
@@ -57,7 +85,6 @@ def get_video_info():
             try:
                 video_id = info.get('id')
                 if video_id:
-                    # YouTube typically has standardized thumbnail URLs
                     return f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg"
             except Exception:
                 pass
@@ -85,13 +112,16 @@ def get_video_info():
         return jsonify(video_info)
     except Exception as e:
         logger.error(f"Error fetching video info: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        if '403' in error_msg or 'Forbidden' in error_msg:
+            error_msg = "Unable to access video. Try updating yt-dlp or the video may be restricted."
+        return jsonify({'error': error_msg}), 500
 
 def generate_progress(d):
     if d['status'] == 'downloading':
-        percent = d['_percent_str']
-        speed = d['_speed_str']
-        eta = d['_eta_str']
+        percent = d.get('_percent_str', '0%')
+        speed = d.get('_speed_str', 'N/A')
+        eta = d.get('_eta_str', 'Unknown')
         progress_data = {
             'percent': percent,
             'speed': speed,
@@ -109,18 +139,18 @@ def download():
     unique_id = int(time.time() * 1000)
     output_file = DOWNLOADS_DIR / f'%(title)s_{unique_id}.%(ext)s'
     
-    ydl_opts = {
+    base_opts = {
         'outtmpl': str(output_file),
         'progress_hooks': [generate_progress],
     }
 
     if download_type == 'video':
-        ydl_opts.update({
-            'format': 'bestvideo[ext=' + requested_format + ']+bestaudio/best[ext=' + requested_format + ']',
+        base_opts.update({
+            'format': f'bestvideo[ext={requested_format}]+bestaudio/best[ext={requested_format}]/best',
             'merge_output_format': requested_format,
         })
     else:  # audio
-        ydl_opts.update({
+        base_opts.update({
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -128,6 +158,8 @@ def download():
                 'preferredquality': '192',
             }],
         })
+
+    ydl_opts = get_ydl_opts(base_opts)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -151,7 +183,10 @@ def download():
         return response
     except Exception as e:
         logger.error(f"Error during download: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        error_msg = str(e)
+        if '403' in error_msg or 'Forbidden' in error_msg:
+            error_msg = "Unable to download video. YouTube may have blocked the request. Try again or update yt-dlp."
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/progress')
 def progress():
