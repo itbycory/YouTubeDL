@@ -135,7 +135,6 @@ def download():
     download_type = request.form['download_type']
     requested_format = request.form['format']
     
-    # Generate a unique identifier for this download
     unique_id = int(time.time() * 1000)
     output_file = DOWNLOADS_DIR / f'%(title)s_{unique_id}.%(ext)s'
     
@@ -167,19 +166,29 @@ def download():
         filename = ydl.prepare_filename(info)
         file_path = Path(filename)
         
-        # Handle audio file extension
         if download_type == 'audio':
             file_path = file_path.with_suffix(f'.{requested_format}')
+        
+        original_title = info.get('title', 'download')
+        # Sanitize filename to remove invalid characters
+        clean_title = "".join(c for c in original_title if c.isalnum() or c in (' ', '-', '_')).strip()
+        clean_filename = f"{clean_title}.{requested_format}"
             
         response = send_file(
             file_path,
             as_attachment=True,
-            download_name=file_path.stem.rsplit('_', 1)[0] + file_path.suffix,
+            download_name=clean_filename,
             mimetype='audio/mpeg' if download_type == 'audio' else f'video/{requested_format}'
         )
         
-        # Remove the file after sending
-        file_path.unlink(missing_ok=True)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Content-Security-Policy'] = "default-src 'none'"
+        
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception as e:
+            logger.warning(f"Could not delete temporary file: {str(e)}")
+            
         return response
     except Exception as e:
         logger.error(f"Error during download: {str(e)}")
