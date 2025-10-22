@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#4F46E5',
-                        secondary: '#7C3AED',
-                    }
-                }
-            }
+    <!-- Use proper Tailwind CSS CDN link instead of the development version -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Add custom styles for dark mode and animations */
+        .dark {
+            color-scheme: dark;
         }
-    </script>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center transition-all duration-500">
     <div class="container mx-auto px-4 py-8 max-w-2xl">
@@ -34,7 +34,7 @@
             <!-- Video Preview Section (Initially Hidden) -->
             <div id="videoPreview" class="hidden mb-6">
                 <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                    <img id="thumbnailImg" class="w-full rounded-lg mb-4" src="/static/default-thumbnail.jpg" alt="Video thumbnail">
+                    <img id="thumbnailImg" class="w-full rounded-lg mb-4" src="/placeholder.svg" alt="Video thumbnail" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Thumbnail%3C/text%3E%3C/svg%3E'">
                     <h2 id="videoTitle" class="text-lg font-semibold text-gray-800 dark:text-white mb-2"></h2>
                     <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-300">
                         <div>
@@ -119,10 +119,50 @@
     </div>
 
     <script>
-        // [All previous JavaScript remains the same]
-        // Only change is in the fetchVideoInfo function
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const downloadForm = document.getElementById('downloadForm');
+        const urlInput = document.getElementById('url');
+        const downloadTypeSelect = document.getElementById('download_type');
+        const formatSelect = document.getElementById('format');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const progressBar = document.getElementById('progressBar');
+        const progressBarFill = document.getElementById('progressBarFill');
+        const downloadSpeed = document.getElementById('downloadSpeed');
+        const downloadEta = document.getElementById('downloadEta');
+        const errorMessage = document.getElementById('errorMessage');
+        const videoPreview = document.getElementById('videoPreview');
+        const loadingVideoInfo = document.getElementById('loadingVideoInfo');
 
-        // Modify the fetchVideoInfo function to add a fallback
+        // Dark mode toggle
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // Update format options based on download type
+        downloadTypeSelect.addEventListener('change', () => {
+            const downloadType = downloadTypeSelect.value;
+            formatSelect.innerHTML = '<option value="">Select a format</option>';
+            
+            if (downloadType === 'video') {
+                formatSelect.innerHTML += '<option value="mp4">MP4</option>';
+                formatSelect.innerHTML += '<option value="webm">WebM</option>';
+            } else {
+                formatSelect.innerHTML += '<option value="mp3">MP3</option>';
+                formatSelect.innerHTML += '<option value="m4a">M4A</option>';
+            }
+        });
+
+        // Trigger format update on page load
+        downloadTypeSelect.dispatchEvent(new Event('change'));
+
+        // Fetch video info when URL is entered
+        urlInput.addEventListener('blur', async () => {
+            const url = urlInput.value.trim();
+            if (url) {
+                await fetchVideoInfo(url);
+            }
+        });
+
         async function fetchVideoInfo(url) {
             loadingVideoInfo.classList.remove('hidden');
             videoPreview.classList.add('hidden');
@@ -137,20 +177,16 @@
                     body: JSON.stringify({ url }),
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch video info');
-                }
-
                 const data = await response.json();
                 
-                if (data.error) {
-                    throw new Error(data.error);
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Failed to fetch video info');
                 }
 
-                // Update the video preview with fallback thumbnail
-                document.getElementById('thumbnailImg').src = data.thumbnail || '/static/default-thumbnail.jpg';
-                document.getElementById('videoTitle').textContent = data.title;
-                document.getElementById('channelName').textContent = data.channel;
+                // Update the video preview
+                document.getElementById('thumbnailImg').src = data.thumbnail || '';
+                document.getElementById('videoTitle').textContent = data.title || 'Unknown Title';
+                document.getElementById('channelName').textContent = data.channel || 'Unknown';
                 document.getElementById('videoDuration').textContent = formatDuration(data.duration);
                 document.getElementById('viewCount').textContent = formatViewCount(data.view_count);
                 
@@ -163,7 +199,78 @@
             }
         }
 
-        // Rest of the script remains the same...
+        function formatDuration(seconds) {
+            if (!seconds) return 'N/A';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatViewCount(count) {
+            if (!count) return 'N/A';
+            if (count >= 1000000) {
+                return (count / 1000000).toFixed(1) + 'M';
+            }
+            if (count >= 1000) {
+                return (count / 1000).toFixed(1) + 'K';
+            }
+            return count.toString();
+        }
+
+        // Handle form submission
+        downloadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            errorMessage.classList.add('hidden');
+            progressBar.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+
+            const formData = new FormData(downloadForm);
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                
+                // Get filename from Content-Disposition header
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'download';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+                
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                errorMessage.querySelector('span').textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loadingSpinner.classList.add('hidden');
+            }
+        });
     </script>
 </body>
 </html>
