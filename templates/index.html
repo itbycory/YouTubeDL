@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader</title>
-    <!-- Restored original Tailwind CDN script -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Add custom styles for dark mode and animations */
         .dark {
             color-scheme: dark;
         }
@@ -16,6 +14,14 @@
         }
         .animate-spin {
             animation: spin 1s linear infinite;
+        }
+        /* Add smooth fade-in animation for thumbnail */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
         }
     </style>
 </head>
@@ -29,6 +35,20 @@
                     <label for="url" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">YouTube URL</label>
                     <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required
                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+
+                <!-- Add video preview section with thumbnail -->
+                <div id="videoPreview" class="hidden mb-4 fade-in">
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                        <div class="flex gap-4">
+                            <img id="videoThumbnail" src="/placeholder.svg" alt="Video thumbnail" class="w-32 h-24 object-cover rounded-lg shadow-sm">
+                            <div class="flex-1">
+                                <h3 id="videoTitle" class="font-semibold text-gray-800 dark:text-white text-sm mb-1"></h3>
+                                <p id="videoChannel" class="text-xs text-gray-600 dark:text-gray-400 mb-1"></p>
+                                <p id="videoDuration" class="text-xs text-gray-500 dark:text-gray-500"></p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -70,10 +90,74 @@
 
     <script>
         const downloadForm = document.getElementById('downloadForm');
+        const urlInput = document.getElementById('url');
         const downloadTypeSelect = document.getElementById('download_type');
         const formatSelect = document.getElementById('format');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const errorMessage = document.getElementById('errorMessage');
+        const videoPreview = document.getElementById('videoPreview');
+        const videoThumbnail = document.getElementById('videoThumbnail');
+        const videoTitle = document.getElementById('videoTitle');
+        const videoChannel = document.getElementById('videoChannel');
+        const videoDuration = document.getElementById('videoDuration');
+
+        let debounceTimer;
+        function debounce(func, delay) {
+            return function(...args) {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        const fetchVideoInfo = debounce(async () => {
+            const url = urlInput.value.trim();
+            
+            // Basic YouTube URL validation
+            if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
+                videoPreview.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch('/video-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch video info');
+                }
+
+                const data = await response.json();
+                
+                // Update preview with video info
+                if (data.thumbnail) {
+                    videoThumbnail.src = data.thumbnail;
+                }
+                videoTitle.textContent = data.title || 'Unknown Title';
+                videoChannel.textContent = data.channel || 'Unknown Channel';
+                
+                // Format duration
+                if (data.duration) {
+                    const minutes = Math.floor(data.duration / 60);
+                    const seconds = data.duration % 60;
+                    videoDuration.textContent = `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    videoDuration.textContent = '';
+                }
+                
+                videoPreview.classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+            } catch (error) {
+                console.error('[v0] Error fetching video info:', error);
+                videoPreview.classList.add('hidden');
+            }
+        }, 800);
+
+        urlInput.addEventListener('input', fetchVideoInfo);
 
         // Update format options based on download type
         downloadTypeSelect.addEventListener('change', () => {
@@ -122,9 +206,9 @@
                 const contentDisposition = response.headers.get('Content-Disposition');
                 let filename = 'download';
                 if (contentDisposition) {
-                    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-                    if (filenameMatch) {
-                        filename = filenameMatch[1];
+                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1].replace(/['"]/g, '');
                     }
                 }
                 
