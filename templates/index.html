@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader</title>
-    <!-- Use proper Tailwind CSS CDN link instead of the development version -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Restored original Tailwind CDN script -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Add custom styles for dark mode and animations */
         .dark {
@@ -22,45 +22,8 @@
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center transition-all duration-500">
     <div class="container mx-auto px-4 py-8 max-w-2xl">
         <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 transition-all duration-500">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold text-gray-800 dark:text-white">YouTube Downloader</h1>
-                <button id="darkModeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white transition-all duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Video Preview Section (Initially Hidden) -->
-            <div id="videoPreview" class="hidden mb-6">
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                    <img id="thumbnailImg" class="w-full rounded-lg mb-4" src="/placeholder.svg" alt="Video thumbnail" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23ddd%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo Thumbnail%3C/text%3E%3C/svg%3E'">
-                    <h2 id="videoTitle" class="text-lg font-semibold text-gray-800 dark:text-white mb-2"></h2>
-                    <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-300">
-                        <div>
-                            <span class="font-medium">Channel:</span>
-                            <span id="channelName"></span>
-                        </div>
-                        <div>
-                            <span class="font-medium">Duration:</span>
-                            <span id="videoDuration"></span>
-                        </div>
-                        <div>
-                            <span class="font-medium">Views:</span>
-                            <span id="viewCount"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Loading Indicator for Video Info -->
-            <div id="loadingVideoInfo" class="hidden mb-4">
-                <div class="flex items-center justify-center space-x-2">
-                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Loading video info...</span>
-                </div>
-            </div>
-
+            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">YouTube Downloader</h1>
+            
             <form id="downloadForm">
                 <div class="mb-4">
                     <label for="url" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">YouTube URL</label>
@@ -96,20 +59,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading formats...</p>
-            </div>
-
-            <div id="progressBar" class="mt-6 hidden">
-                <div class="mb-2">
-                    <div class="text-gray-700 dark:text-gray-300 text-sm font-bold mb-1">Download Progress</div>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                        <div id="progressBarFill" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                    <span>Speed: <span id="downloadSpeed">--</span></span>
-                    <span>ETA: <span id="downloadEta">--</span></span>
-                </div>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Processing...</p>
             </div>
 
             <div id="errorMessage" class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden" role="alert">
@@ -119,24 +69,11 @@
     </div>
 
     <script>
-        const darkModeToggle = document.getElementById('darkModeToggle');
         const downloadForm = document.getElementById('downloadForm');
-        const urlInput = document.getElementById('url');
         const downloadTypeSelect = document.getElementById('download_type');
         const formatSelect = document.getElementById('format');
         const loadingSpinner = document.getElementById('loadingSpinner');
-        const progressBar = document.getElementById('progressBar');
-        const progressBarFill = document.getElementById('progressBarFill');
-        const downloadSpeed = document.getElementById('downloadSpeed');
-        const downloadEta = document.getElementById('downloadEta');
         const errorMessage = document.getElementById('errorMessage');
-        const videoPreview = document.getElementById('videoPreview');
-        const loadingVideoInfo = document.getElementById('loadingVideoInfo');
-
-        // Dark mode toggle
-        darkModeToggle.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-        });
 
         // Update format options based on download type
         downloadTypeSelect.addEventListener('change', () => {
@@ -155,79 +92,11 @@
         // Trigger format update on page load
         downloadTypeSelect.dispatchEvent(new Event('change'));
 
-        // Fetch video info when URL is entered
-        urlInput.addEventListener('blur', async () => {
-            const url = urlInput.value.trim();
-            if (url) {
-                await fetchVideoInfo(url);
-            }
-        });
-
-        async function fetchVideoInfo(url) {
-            loadingVideoInfo.classList.remove('hidden');
-            videoPreview.classList.add('hidden');
-            errorMessage.classList.add('hidden');
-
-            try {
-                const response = await fetch('/video-info', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url }),
-                });
-
-                const data = await response.json();
-                
-                if (!response.ok || data.error) {
-                    throw new Error(data.error || 'Failed to fetch video info');
-                }
-
-                // Update the video preview
-                document.getElementById('thumbnailImg').src = data.thumbnail || '';
-                document.getElementById('videoTitle').textContent = data.title || 'Unknown Title';
-                document.getElementById('channelName').textContent = data.channel || 'Unknown';
-                document.getElementById('videoDuration').textContent = formatDuration(data.duration);
-                document.getElementById('viewCount').textContent = formatViewCount(data.view_count);
-                
-                videoPreview.classList.remove('hidden');
-            } catch (error) {
-                errorMessage.querySelector('span').textContent = error.message;
-                errorMessage.classList.remove('hidden');
-            } finally {
-                loadingVideoInfo.classList.add('hidden');
-            }
-        }
-
-        function formatDuration(seconds) {
-            if (!seconds) return 'N/A';
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            
-            if (hours > 0) {
-                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            }
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        function formatViewCount(count) {
-            if (!count) return 'N/A';
-            if (count >= 1000000) {
-                return (count / 1000000).toFixed(1) + 'M';
-            }
-            if (count >= 1000) {
-                return (count / 1000).toFixed(1) + 'K';
-            }
-            return count.toString();
-        }
-
         // Handle form submission
         downloadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             errorMessage.classList.add('hidden');
-            progressBar.classList.add('hidden');
             loadingSpinner.classList.remove('hidden');
 
             const formData = new FormData(downloadForm);
