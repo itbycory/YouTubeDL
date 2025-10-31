@@ -35,7 +35,7 @@ YouTubeDL-main/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/cmarcus93/YouTubeDL.git
+git clone https://github.com/itbycory/YouTubeDL.git
 cd YouTubeDL
 ```
 
@@ -50,7 +50,7 @@ The application will be available at `http://localhost:8080`
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/cmarcus93/YouTubeDL.git
+git clone https://github.com/itbycory/YouTubeDL.git
 cd YouTubeDL
 ```
 
