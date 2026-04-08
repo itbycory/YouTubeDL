@@ -6,224 +6,410 @@
     <title>YouTube Downloader</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .dark {
-            color-scheme: dark;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .animate-spin {
-            animation: spin 1s linear infinite;
-        }
-        /* Add smooth fade-in animation for thumbnail */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
+        .spin { animation: spin 1s linear infinite; }
+
+        /* Progress bar fill transition */
+        #progressFill {
+            transition: width 0.4s ease;
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center transition-all duration-500">
-    <div class="container mx-auto px-4 py-8 max-w-2xl">
-        <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 transition-all duration-500">
-            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">YouTube Downloader</h1>
-            
-            <form id="downloadForm">
-                <div class="mb-4">
-                    <label for="url" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">YouTube URL</label>
-                    <input type="text" id="url" name="url" placeholder="https://www.youtube.com/watch?v=..." required
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                </div>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
 
-                <!-- Add video preview section with thumbnail -->
-                <div id="videoPreview" class="hidden mb-4 fade-in">
-                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                        <div class="flex gap-4">
-                            <img id="videoThumbnail" src="/placeholder.svg" alt="Video thumbnail" class="w-32 h-24 object-cover rounded-lg shadow-sm">
-                            <div class="flex-1">
-                                <h3 id="videoTitle" class="font-semibold text-gray-800 dark:text-white text-sm mb-1"></h3>
-                                <p id="videoChannel" class="text-xs text-gray-600 dark:text-gray-400 mb-1"></p>
-                                <p id="videoDuration" class="text-xs text-gray-500 dark:text-gray-500"></p>
-                            </div>
+<div class="w-full max-w-2xl space-y-4">
+
+    <!-- Main card -->
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-xl p-6 transition-colors duration-300">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">YouTube Downloader</h1>
+
+        <form id="downloadForm" autocomplete="off">
+
+            <!-- URL -->
+            <div class="mb-4">
+                <label for="url" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">YouTube URL</label>
+                <input type="url" id="url" name="url"
+                       placeholder="https://www.youtube.com/watch?v=..."
+                       required
+                       class="w-full border rounded-lg py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- Video preview (hidden until info loads) -->
+            <div id="videoPreview" class="hidden mb-4 fade-in">
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                    <div class="flex gap-4">
+                        <img id="videoThumbnail" src="" alt="Thumbnail"
+                             class="w-32 h-24 object-cover rounded-lg shadow-sm flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <h3 id="videoTitle"   class="font-semibold text-gray-800 dark:text-white text-sm mb-1 truncate"></h3>
+                            <p  id="videoChannel" class="text-xs text-gray-600 dark:text-gray-400 mb-1"></p>
+                            <p  id="videoDuration" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                            <p  id="playlistBadge" class="hidden mt-1 text-xs font-medium text-blue-600 dark:text-blue-400"></p>
                         </div>
                     </div>
                 </div>
-
-                <div class="mb-4">
-                    <label for="download_type" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Download Type</label>
-                    <select name="download_type" id="download_type" required
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="video">Video</option>
-                        <option value="audio">Audio</option>
-                    </select>
-                </div>
-
-                <div class="mb-4">
-                    <label for="format" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Format</label>
-                    <select name="format" id="format" required
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="">Select a format</option>
-                    </select>
-                </div>
-
-                <button type="submit" id="downloadButton"
-                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out transform hover:scale-105">
-                    Download
-                </button>
-            </form>
-
-            <div id="loadingSpinner" class="hidden mt-4 text-center">
-                <svg class="animate-spin h-5 w-5 mx-auto text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Processing...</p>
             </div>
 
-            <div id="errorMessage" class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative hidden" role="alert">
-                <span class="block sm:inline"></span>
+            <!-- Download type -->
+            <div class="mb-4">
+                <label for="download_type" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Type</label>
+                <select id="download_type" name="download_type" required
+                        class="w-full border rounded-lg py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="video">Video</option>
+                    <option value="audio">Audio</option>
+                </select>
             </div>
+
+            <!-- Format -->
+            <div class="mb-4">
+                <label for="format" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Format</label>
+                <select id="format" name="format" required
+                        class="w-full border rounded-lg py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </select>
+            </div>
+
+            <!-- Audio quality (shown for audio only) -->
+            <div id="audioQualityRow" class="hidden mb-4">
+                <label for="audio_quality" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Audio Quality</label>
+                <select id="audio_quality" name="audio_quality"
+                        class="w-full border rounded-lg py-2 px-3 text-gray-700 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="128">128 kbps — small file</option>
+                    <option value="192" selected>192 kbps — balanced</option>
+                    <option value="320">320 kbps — best quality</option>
+                </select>
+            </div>
+
+            <!-- Playlist option (shown when playlist URL detected) -->
+            <div id="playlistRow" class="hidden mb-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="download_playlist" name="download_playlist" value="true"
+                           class="w-4 h-4 accent-blue-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                        Download entire playlist <span id="playlistCount" class="text-gray-500 dark:text-gray-400 font-normal"></span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500 block">Result will be a .zip file</span>
+                    </span>
+                </label>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" id="downloadButton"
+                    class="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition duration-200">
+                Download
+            </button>
+        </form>
+
+        <!-- Progress section -->
+        <div id="progressSection" class="hidden mt-5">
+            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                <span id="progressStatus">Preparing…</span>
+                <span id="progressMeta"></span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 overflow-hidden">
+                <div id="progressFill" class="bg-blue-500 h-3 rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Error message -->
+        <div id="errorMessage" class="hidden mt-4 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm" role="alert">
+            <span id="errorText"></span>
         </div>
     </div>
 
-    <script>
-        const downloadForm = document.getElementById('downloadForm');
-        const urlInput = document.getElementById('url');
-        const downloadTypeSelect = document.getElementById('download_type');
-        const formatSelect = document.getElementById('format');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const errorMessage = document.getElementById('errorMessage');
-        const videoPreview = document.getElementById('videoPreview');
-        const videoThumbnail = document.getElementById('videoThumbnail');
-        const videoTitle = document.getElementById('videoTitle');
-        const videoChannel = document.getElementById('videoChannel');
-        const videoDuration = document.getElementById('videoDuration');
+    <!-- Download history card -->
+    <div id="historyCard" class="hidden bg-white dark:bg-gray-800 shadow-md rounded-xl p-6 fade-in">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">Recent Downloads</h2>
+        <ul id="historyList" class="space-y-2 text-sm"></ul>
+    </div>
 
-        let debounceTimer;
-        function debounce(func, delay) {
-            return function(...args) {
-                clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => func.apply(this, args), delay);
-            };
+</div><!-- /max-w-2xl -->
+
+<script>
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const form            = document.getElementById('downloadForm');
+    const urlInput        = document.getElementById('url');
+    const typeSelect      = document.getElementById('download_type');
+    const formatSelect    = document.getElementById('format');
+    const qualityRow      = document.getElementById('audioQualityRow');
+    const playlistRow     = document.getElementById('playlistRow');
+    const playlistCount   = document.getElementById('playlistCount');
+    const playlistCheck   = document.getElementById('download_playlist');
+    const downloadBtn     = document.getElementById('downloadButton');
+
+    const videoPreview    = document.getElementById('videoPreview');
+    const videoThumbnail  = document.getElementById('videoThumbnail');
+    const videoTitle      = document.getElementById('videoTitle');
+    const videoChannel    = document.getElementById('videoChannel');
+    const videoDuration   = document.getElementById('videoDuration');
+    const playlistBadge   = document.getElementById('playlistBadge');
+
+    const progressSection = document.getElementById('progressSection');
+    const progressStatus  = document.getElementById('progressStatus');
+    const progressMeta    = document.getElementById('progressMeta');
+    const progressFill    = document.getElementById('progressFill');
+
+    const errorMessage    = document.getElementById('errorMessage');
+    const errorText       = document.getElementById('errorText');
+
+    const historyCard     = document.getElementById('historyCard');
+    const historyList     = document.getElementById('historyList');
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function showError(msg) {
+        errorText.textContent = msg;
+        errorMessage.classList.remove('hidden');
+    }
+
+    function hideError() {
+        errorMessage.classList.add('hidden');
+    }
+
+    function setProgress(pct, statusMsg, meta) {
+        progressFill.style.width = pct;
+        progressStatus.textContent = statusMsg;
+        progressMeta.textContent = meta || '';
+    }
+
+    function showProgress() {
+        progressSection.classList.remove('hidden');
+    }
+
+    function hideProgress() {
+        progressSection.classList.add('hidden');
+    }
+
+    function formatDuration(secs) {
+        if (!secs) return '';
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        return h
+            ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+            : `${m}:${String(s).padStart(2,'0')}`;
+    }
+
+    // ── Format options ────────────────────────────────────────────────────────
+    function updateFormatOptions() {
+        const isAudio = typeSelect.value === 'audio';
+        formatSelect.innerHTML = isAudio
+            ? '<option value="mp3">MP3</option><option value="m4a">M4A</option>'
+            : '<option value="mp4">MP4</option><option value="webm">WebM</option>';
+        qualityRow.classList.toggle('hidden', !isAudio);
+    }
+
+    typeSelect.addEventListener('change', updateFormatOptions);
+    updateFormatOptions();
+
+    // ── URL debounce → fetch video info ──────────────────────────────────────
+    let debounceTimer;
+    let currentInfoAbort = null;
+
+    urlInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchVideoInfo, 800);
+    });
+
+    async function fetchVideoInfo() {
+        const url = urlInput.value.trim();
+        if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
+            videoPreview.classList.add('hidden');
+            playlistRow.classList.add('hidden');
+            return;
         }
 
-        const fetchVideoInfo = debounce(async () => {
-            const url = urlInput.value.trim();
-            
-            // Basic YouTube URL validation
-            if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
-                videoPreview.classList.add('hidden');
-                return;
-            }
+        if (currentInfoAbort) currentInfoAbort.abort();
+        currentInfoAbort = new AbortController();
 
-            try {
-                const response = await fetch('/video-info', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url })
-                });
+        try {
+            const res = await fetch('/video-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+                signal: currentInfoAbort.signal,
+            });
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch video info');
-                }
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.error) return;
 
-                const data = await response.json();
-                
-                // Update preview with video info
-                if (data.thumbnail) {
-                    videoThumbnail.src = data.thumbnail;
-                }
-                videoTitle.textContent = data.title || 'Unknown Title';
-                videoChannel.textContent = data.channel || 'Unknown Channel';
-                
-                // Format duration
-                if (data.duration) {
-                    const minutes = Math.floor(data.duration / 60);
-                    const seconds = data.duration % 60;
-                    videoDuration.textContent = `Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-                } else {
-                    videoDuration.textContent = '';
-                }
-                
-                videoPreview.classList.remove('hidden');
-                errorMessage.classList.add('hidden');
-            } catch (error) {
-                console.error('[v0] Error fetching video info:', error);
-                videoPreview.classList.add('hidden');
-            }
-        }, 800);
+            // Populate preview
+            videoThumbnail.src = data.thumbnail || '';
+            videoTitle.textContent   = data.title   || 'Unknown title';
+            videoChannel.textContent = data.channel || 'Unknown channel';
+            videoDuration.textContent = data.duration ? 'Duration: ' + formatDuration(data.duration) : '';
 
-        urlInput.addEventListener('input', fetchVideoInfo);
-
-        // Update format options based on download type
-        downloadTypeSelect.addEventListener('change', () => {
-            const downloadType = downloadTypeSelect.value;
-            formatSelect.innerHTML = '<option value="">Select a format</option>';
-            
-            if (downloadType === 'video') {
-                formatSelect.innerHTML += '<option value="mp4">MP4</option>';
-                formatSelect.innerHTML += '<option value="webm">WebM</option>';
+            // Playlist info
+            if (data.is_playlist) {
+                const cnt = data.playlist_count ? ` (${data.playlist_count} videos)` : '';
+                playlistBadge.textContent = 'Playlist detected' + cnt;
+                playlistBadge.classList.remove('hidden');
+                playlistCount.textContent = data.playlist_count ? `(${data.playlist_count} videos)` : '';
+                playlistRow.classList.remove('hidden');
             } else {
-                formatSelect.innerHTML += '<option value="mp3">MP3</option>';
-                formatSelect.innerHTML += '<option value="m4a">M4A</option>';
+                playlistBadge.classList.add('hidden');
+                playlistRow.classList.add('hidden');
+                playlistCheck.checked = false;
             }
-        });
 
-        // Trigger format update on page load
-        downloadTypeSelect.dispatchEvent(new Event('change'));
-
-        // Handle form submission
-        downloadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            errorMessage.classList.add('hidden');
-            loadingSpinner.classList.remove('hidden');
-
-            const formData = new FormData(downloadForm);
-
-            try {
-                const response = await fetch('/download', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Download failed');
-                }
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                
-                // Get filename from Content-Disposition header
-                const contentDisposition = response.headers.get('Content-Disposition');
-                let filename = 'download';
-                if (contentDisposition) {
-                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-                    if (filenameMatch && filenameMatch[1]) {
-                        filename = filenameMatch[1].replace(/['"]/g, '');
-                    }
-                }
-                
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } catch (error) {
-                errorMessage.querySelector('span').textContent = error.message;
-                errorMessage.classList.remove('hidden');
-            } finally {
-                loadingSpinner.classList.add('hidden');
+            videoPreview.classList.remove('hidden');
+            hideError();
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                videoPreview.classList.add('hidden');
             }
-        });
-    </script>
+        }
+    }
+
+    // ── Form submit → two-step download ──────────────────────────────────────
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideError();
+        hideProgress();
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = 'Starting…';
+
+        const formData = new FormData(form);
+
+        // Step 1: Kick off background download, get download_id
+        let downloadId;
+        try {
+            const res = await fetch('/download', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                throw new Error(data.error || 'Failed to start download');
+            }
+            downloadId = data.download_id;
+        } catch (err) {
+            showError(err.message);
+            downloadBtn.disabled = false;
+            downloadBtn.textContent = 'Download';
+            return;
+        }
+
+        // Step 2: Stream progress via SSE
+        showProgress();
+        setProgress('0%', 'Preparing…', '');
+        addHistoryEntry(downloadId, 'downloading');
+
+        const evtSource = new EventSource(`/progress/${downloadId}`);
+
+        evtSource.onmessage = (event) => {
+            const state = JSON.parse(event.data);
+            handleProgressState(state, downloadId, evtSource);
+        };
+
+        evtSource.onerror = () => {
+            evtSource.close();
+            showError('Lost connection to server. Your download may still be processing — refresh and try again.');
+            resetButton();
+            hideProgress();
+        };
+    });
+
+    function handleProgressState(state, downloadId, evtSource) {
+        switch (state.status) {
+            case 'pending':
+                setProgress('0%', 'Queued…', '');
+                break;
+
+            case 'downloading': {
+                const pct = state.percent || '0%';
+                const speed = state.speed ? ` · ${state.speed}` : '';
+                const eta = state.eta   ? ` · ETA ${state.eta}` : '';
+                setProgress(pct, `Downloading ${pct}`, speed + eta);
+                break;
+            }
+
+            case 'processing':
+                setProgress('100%', 'Processing…', 'Converting / merging');
+                break;
+
+            case 'done':
+                evtSource.close();
+                setProgress('100%', 'Done! Saving file…', '');
+                updateHistoryEntry(downloadId, 'done', state.filename);
+                triggerFileDownload(downloadId);
+                setTimeout(() => {
+                    hideProgress();
+                    resetButton();
+                }, 1500);
+                break;
+
+            case 'error':
+                evtSource.close();
+                showError(state.error || 'Download failed.');
+                updateHistoryEntry(downloadId, 'error', state.error);
+                hideProgress();
+                resetButton();
+                break;
+        }
+    }
+
+    function triggerFileDownload(downloadId) {
+        const a = document.createElement('a');
+        a.href = `/get-file/${downloadId}`;
+        a.download = '';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function resetButton() {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Download';
+    }
+
+    // ── Download history ──────────────────────────────────────────────────────
+    const historyEntries = {};   // downloadId → { el, titleEl, statusEl }
+
+    function addHistoryEntry(downloadId, status) {
+        historyCard.classList.remove('hidden');
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 pb-2 last:border-0 last:pb-0';
+
+        const nameEl   = document.createElement('span');
+        nameEl.className = 'truncate flex-1';
+        nameEl.textContent = urlInput.value.trim();
+
+        const statusEl = document.createElement('span');
+        statusEl.className = 'text-xs font-medium shrink-0';
+        setHistoryStatus(statusEl, status);
+
+        li.appendChild(nameEl);
+        li.appendChild(statusEl);
+        historyList.prepend(li);
+
+        historyEntries[downloadId] = { li, nameEl, statusEl };
+    }
+
+    function updateHistoryEntry(downloadId, status, label) {
+        const entry = historyEntries[downloadId];
+        if (!entry) return;
+        if (label && status === 'done') {
+            entry.nameEl.textContent = label;
+        }
+        setHistoryStatus(entry.statusEl, status, label);
+    }
+
+    function setHistoryStatus(el, status, label) {
+        const map = {
+            downloading: ['Downloading', 'text-blue-500'],
+            done:        ['Done',        'text-green-600 dark:text-green-400'],
+            error:       ['Error',       'text-red-500'],
+            pending:     ['Queued',      'text-gray-400'],
+        };
+        const [text, cls] = map[status] || ['Unknown', 'text-gray-400'];
+        el.textContent = text;
+        el.className = `text-xs font-medium shrink-0 ${cls}`;
+    }
+</script>
 </body>
 </html>

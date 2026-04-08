@@ -1,14 +1,14 @@
 #!/bin/bash
+set -e
 
-# Update yt-dlp on startup
 echo "Updating yt-dlp on startup..."
-pip install --upgrade yt-dlp
+pip install --quiet --upgrade yt-dlp
 
-# Start cron in the background
+# Add hourly cron job (runs as appuser via cron — requires cron daemon)
+echo "0 * * * * pip install --quiet --upgrade yt-dlp >> /app/logs/ytdlp-update.log 2>&1" | crontab -
+
+# Start cron in background
 cron
 
-# Add cron job for hourly updates
-echo "0 * * * * pip install --upgrade yt-dlp >> /var/log/ytdlp-update.log 2>&1" | crontab -
-
-# Start the Flask application
+echo "Starting Flask application on port ${PORT:-8080}..."
 exec python app.py

@@ -1,141 +1,123 @@
 # YouTube Downloader
 
-A Flask-based web application that allows users to download YouTube videos and audio using yt-dlp. The application provides a simple web interface for downloading content in various formats and qualities.
+A Flask web app for downloading YouTube videos and audio, powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
 ## Features
 
-- Download YouTube videos in multiple quality options (1080p, 720p, 480p)
-- Extract audio from videos (MP3 format)
-- Simple and intuitive web interface
-- Docker support for easy deployment
-- Progress tracking during downloads
+- Download videos as **MP4** or **WebM**
+- Extract audio as **MP3** or **M4A** at 128 / 192 / 320 kbps
+- **Real-time progress bar** with speed and ETA
+- **Playlist support** — downloads all videos as a zip file
+- Video preview with thumbnail, channel, and duration
+- Rate limiting and URL validation built in
+- Dark mode support
+- Docker ready
 
-## Prerequisites
+## Quick start (Docker)
 
-- Docker and Docker Compose
-- Python 3.11+ (if running without Docker)
-- FFmpeg (required for audio extraction)
-
-## Project Structure
-
-```
-YouTubeDL-main/
-├── app.py
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── downloads/
-└── templates/
-    └── index.html
-```
-
-## Installation
-
-### Using Docker (Recommended)
-
-1. Clone the repository:
 ```bash
 git clone https://github.com/itbycory/YouTubeDL.git
 cd YouTubeDL
-```
-
-2. Build and run the Docker container:
-```bash
 docker compose up -d
 ```
 
-The application will be available at `http://localhost:8080`
+Open `http://localhost:8080`.
 
-### Manual Installation
+## Manual setup
 
-1. Clone the repository:
+Requirements: Python 3.11+, FFmpeg
+
 ```bash
 git clone https://github.com/itbycory/YouTubeDL.git
 cd YouTubeDL
-```
 
-2. Install FFmpeg:
-- For Ubuntu/Debian:
-  ```bash
-  sudo apt-get update && sudo apt-get install ffmpeg
-  ```
-- For macOS:
-  ```bash
-  brew install ffmpeg
-  ```
-- For Windows:
-  Download from [FFmpeg official website](https://ffmpeg.org/download.html)
-
-3. Create and activate a virtual environment (optional but recommended):
-```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-4. Install the required packages:
-```bash
 pip install -r requirements.txt
-```
-
-5. Run the application:
-```bash
 python app.py
 ```
 
-The application will be available at `http://localhost:8080`
-
-## Usage
-
-1. Open your web browser and navigate to `http://localhost:8080`
-2. Paste a YouTube URL into the input field
-3. Select download type (video or audio)
-4. If downloading video, select the desired quality
-5. Click the Download button
-6. Wait for the download to complete
-7. The file will be automatically downloaded to your computer
+Open `http://localhost:8080`.
 
 ## Configuration
 
-The following environment variables can be modified in the `docker-compose.yml` file:
+Copy `.env.example` to `.env` and adjust as needed. All settings can also be set as environment variables.
 
-- `PYTHONUNBUFFERED`: Controls Python output buffering (default: 1)
-- Port mapping: Can be changed from 8080 to another port if needed
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8080` | Port Flask listens on |
+| `FLASK_DEBUG` | `false` | Enable Flask debug mode |
+| `DOWNLOADS_DIR` | `/app/downloads` | Temporary download directory |
+| `DEFAULT_AUDIO_QUALITY` | `192` | Default audio bitrate (`128`, `192`, `320`) |
+| `MAX_CONTENT_LENGTH` | `1073741824` | Max upload/response size (bytes) |
 
-## File Storage
+## API endpoints
 
-Downloaded files are temporarily stored in the `downloads` directory. When using Docker, this directory is mounted as a volume to persist downloads between container restarts.
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Web UI |
+| `POST` | `/video-info` | Fetch video metadata (JSON body: `{"url": "..."}`) |
+| `POST` | `/download` | Start a background download, returns `{"download_id": "..."}` |
+| `GET` | `/progress/<id>` | Server-Sent Events stream of download progress |
+| `GET` | `/get-file/<id>` | Retrieve the completed file |
+| `GET` | `/history` | List all tracked downloads in this session |
 
-## Contributing
+## Rate limits
 
-1. Fork the repository from [https://github.com/cmarcus93/YouTubeDL](https://github.com/cmarcus93/YouTubeDL)
-2. Create a new branch for your feature
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+| Endpoint | Limit |
+|---|---|
+| `/video-info` | 30 requests / minute |
+| `/download` | 10 requests / minute |
+| All other routes | 200 / hour, 20 / minute |
 
-## Security Considerations
+## Project structure
 
-- This application is intended for personal use only
-- Be aware of YouTube's terms of service regarding content downloading
-- The application doesn't implement rate limiting or user authentication
-- Consider adding security measures before deploying in a production environment
+```
+YouTubeDL/
+├── app.py                  # Flask application
+├── templates/
+│   └── index.html          # Frontend UI
+├── Dockerfile
+├── docker-compose.yml
+├── entrypoint.sh           # Container startup script
+├── requirements.txt
+├── .env.example            # Environment variable reference
+├── downloads/              # Temporary file storage (volume-mounted)
+└── logs/                   # yt-dlp update logs (volume-mounted)
+```
 
-## Known Issues
+## Troubleshooting
 
-- Large files may take longer to process
-- Some video formats might not be available for certain URLs
-- Progress tracking might not be accurate for all downloads
+**Downloads fail with a 403 error**
+YouTube occasionally blocks requests. The container auto-updates yt-dlp hourly; you can also trigger it manually:
+```bash
+docker compose exec yt-dlp-app pip install --upgrade yt-dlp
+```
+
+**Where are the logs?**
+- Application logs: `docker compose logs -f`
+- yt-dlp update cron logs: `./logs/ytdlp-update.log`
+
+**Health check failing?**
+The health check uses `wget`. Ensure you are running the container from the provided Dockerfile (slim image does not include `curl`).
+
+**Port already in use?**
+Set `PORT=8081` (or any free port) in your `.env` file.
+
+## Security notes
+
+This application is intended for **personal use only**. It does not implement authentication. Do not expose it to the public internet without placing it behind a reverse proxy with access controls.
+
+Please respect [YouTube's Terms of Service](https://www.youtube.com/t/terms) regarding content downloading.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT — see [LICENSE](LICENSE).
 
-## Acknowledgments
+## Acknowledgements
 
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) for the download functionality
-- [Flask](https://flask.palletsprojects.com/) for the web framework
-- [Docker](https://www.docker.com/) for containerization
-
-## Support
-
-For support, please open an issue in the [GitHub repository](https://github.com/cmarcus93/YouTubeDL) or contact the maintainers.
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [Flask](https://flask.palletsprojects.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Docker](https://www.docker.com/)
